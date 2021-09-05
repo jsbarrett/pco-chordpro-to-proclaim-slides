@@ -17,9 +17,9 @@ const groupInTwos = lyrics => {
 
 const parseChordChart = chordchart => {
   return chordchart
-    .replace(/\[.*?\]/g, '')
-    .replace(/\t/g, '')
-    .split('\n\n')
+    .replace(/\[.*?\]/g, '') // remove chords
+    .replace(/\t/g, '') // remove tabs
+    .split(/\r\n\r\n/) // split by section
     .map(x => {
       const [section, ...lyrics] = x
         .replace(/::::/g, '\n')
@@ -53,9 +53,47 @@ const download = (name, data) => {
   document.body.removeChild(anchorElement)
 }
 
-input.value = chordchart
-output.value = parseChordChart(chordchart)
+const baseUrl = 'https://api.planningcenteronline.com/services/v2'
+const headers = {
+  Authorization: `Basic ${btoa('f29157f7e634aa2a4bfe045b8ab42695593006cde73e3c23f67c97b6bfad6734:b453d9d268545723a8c5a0b250e9640bca8be2403a1582d7a6f26ae2896bb55b')}`
+}
 
-downloadbtn.addEventListener('click', () => {
-  download('How Deep The Father\'s Love For Us.txt', parseChordChart(chordchart))
+const getArrangementForItem = async item => {
+  const songId = item.relationships.song.data.id
+  const arrangementId = item.relationships.arrangement.data.id
+  return fetch(`${baseUrl}/songs/${songId}/arrangements/${arrangementId}`, { headers })
+    .then(x => x.json())
+    .then(x => x.data)
+    .then(x => {
+      return {
+        item,
+        arrangement: x
+      }
+    })
+}
+
+const getPlanItems = async planId => {
+  return fetch(`https://api.planningcenteronline.com/services/v2/service_types/1154599/plans/${planId}/items`, { headers })
+    .then(x => x.json())
+    .then(items => items.data.filter(x => x.attributes.item_type === 'song'))
+    .then(items => Promise.all(items.map(getArrangementForItem)))
+    .then(consoleLog)
+}
+
+downloadbtn.addEventListener('click', async () => {
+  try {
+    const upcomingPlanId = await getUpcomingPlan()
+    const retrievedItems = await getPlanItems(upcomingPlanId)
+    retrievedItems.forEach(item => {
+      download(`${item.item.attributes.title}.txt`, parseChordChart(item.arrangement.attributes.chord_chart))
+    })
+  } catch (err) {
+    console.error(err)
+  }
 })
+
+const getUpcomingPlan = async () => {
+  return fetch(`https://api.planningcenteronline.com/services/v2/service_types/1154599/plans?filter=future`, { headers })
+    .then(x => x.json())
+    .then(x => x.data[0].id)
+}
