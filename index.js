@@ -53,6 +53,7 @@ const download = (name, data) => {
   document.body.removeChild(anchorElement)
 }
 
+input.value = chordchart
 output.value = parseChordChart(chordchart)
 
 downloadbtn.addEventListener('click', () => {
