@@ -12,6 +12,9 @@ const headers = {
 // ----------------------------------------------------------------------------
 
 const consoleLog = x => { console.log(x); return x }
+const map = fn => arr => arr.map(fn)
+const pipe = fns => x => fns.reduce((result, fn) => fn(result), x)
+const PromiseAll = arr => Promise.all(arr)
 
 const groupInTwos = lyrics => {
   const grouped = [[]]
@@ -47,26 +50,40 @@ const getUpcomingPlan = async () => {
     .then(x => x.data[0].id)
 }
 
+const pluckSongIdAndArrangementId = item => {
+  return {
+    songId: item.relationships.song.data.id,
+    arrangementId: item.relationships.arrangement.data.id,
+    item,
+  }
+}
+
 const getPlanItems = async planId => {
   return fetch(`https://api.planningcenteronline.com/services/v2/service_types/1154599/plans/${planId}/items`, { headers })
     .then(x => x.json())
     .then(items => items.data.filter(x => x.attributes.item_type === 'song'))
-    .then(items => Promise.all(items.map(getArrangementForItem)))
+    .then(pipe([
+      map(pluckSongIdAndArrangementId),
+      map(getSongDetailsAndArrangement),
+      PromiseAll,
+     ]))
     .then(consoleLog)
 }
 
-const getArrangementForItem = async item => {
-  const songId = item.relationships.song.data.id
-  const arrangementId = item.relationships.arrangement.data.id
-  return fetch(`${baseUrl}/songs/${songId}/arrangements/${arrangementId}`, { headers })
+const getSongDetailsAndArrangement = async ({ songId, arrangementId, item }) => {
+  const arrangement = await fetch(`${baseUrl}/songs/${songId}/arrangements/${arrangementId}`, { headers })
     .then(x => x.json())
     .then(x => x.data)
-    .then(x => {
-      return {
-        item,
-        arrangement: x
-      }
-    })
+
+  const song = await fetch(`${baseUrl}/songs/${songId}`, { headers })
+    .then(x => x.json())
+    .then(x => x.data)
+
+  return {
+    item,
+    arrangement,
+    song,
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -104,14 +121,22 @@ const parseChordChart = chordchart => {
 
 downloadbtn.addEventListener('click', async () => {
   try {
-    const upcomingPlanId = await getUpcomingPlan()
+    // const upcomingPlanId = await getUpcomingPlan()
+    const upcomingPlanId = 54230135
     const retrievedItems = await getPlanItems(upcomingPlanId)
+
     retrievedItems.forEach(item => {
-      const filename = `${item.item.attributes.title}.txt`
+      const title = item.item.attributes.title
+      const filename = `${title}.txt`
       const lyrics = parseChordChart(item.arrangement.attributes.chord_chart)
-      download(filename, lyrics)
+      const { author, copyright, } = item.song.attributes
+      const copyrightInfo = `\n\nTitle: ${title}\nAuthor: ${author}\nCopyright: ${copyright}`
+      const data = `${title}\n\n${lyrics}\n\n${copyrightInfo}`
+      // console.log({ filename, data })
+      download(filename, data)
     })
   } catch (err) {
     console.error(err)
   }
 })
+
