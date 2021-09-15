@@ -121,8 +121,7 @@ const parseChordChart = chordchart => {
 
 downloadbtn.addEventListener('click', async () => {
   try {
-    // const upcomingPlanId = await getUpcomingPlan()
-    const upcomingPlanId = 54230135
+    const upcomingPlanId = await getUpcomingPlan()
     const retrievedItems = await getPlanItems(upcomingPlanId)
 
     retrievedItems.forEach(item => {
