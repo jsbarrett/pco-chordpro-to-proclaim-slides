@@ -4,7 +4,7 @@
 
 const baseUrl = 'https://api.planningcenteronline.com/services/v2'
 const headers = {
-  Authorization: `Basic ${btoa('f29157f7e634aa2a4bfe045b8ab42695593006cde73e3c23f67c97b6bfad6734:b453d9d268545723a8c5a0b250e9640bca8be2403a1582d7a6f26ae2896bb55b')}`
+  Authorization: `Basic ${btoa('b0ad6ce1f679045ab9a6c584e111986b7ff0e518920bc74e4e1dc0387bda80ee:66dffc87398932e150c48db1dea58407b2700cc0292b15c8b023a0d37f9a42a0')}`
 }
 
 // ----------------------------------------------------------------------------
